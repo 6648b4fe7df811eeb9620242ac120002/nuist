@@ -9,10 +9,9 @@ import os
 # 登录相关信息
 username = "学号"
 password = "密码"
-# 设置定时查询和预订的时间（示例：2024-01-01 12:00:00）
-# 如果2点开始预订，此处填写1:50
-target_time = "2024-11-26 08:55:00"
-loop_count = 0
+# 设置定时查询和预订的时间范围（示例：2024-01-01 11:40:00 到 2024-01-01 12:20:00）
+start_time = "2024-11-26 15:20:00"
+end_time = "2024-11-26 15:30:00"
 
 # 目标登录网址
 login_url = "https://authserver.nuist.edu.cn/authserver/login?service=https://nxdyjs.nuist.edu.cn/gmis5/oauthLogin/njxxgcdx"
@@ -113,6 +112,7 @@ def login():
     except Exception as e:
         print("登录失败")
         return False
+
 def get_available_courses():
     """查询可选课程列表"""
     try:
@@ -141,33 +141,44 @@ def sign_up_course(course_id):
 def main():
     # 登录并获取Cookies
     successFlag = login()
-    if  successFlag == False:
+    if successFlag == False:
         print("登录失败，请检查用户名或密码是否正确！")
         return
 
     while True:
         current_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-        if current_time >= target_time:
+        if current_time >= end_time:
+            print("已超出预订时间范围，程序停止。")
             break
 
-        # 等待10分钟后开始查询和预订
-        if current_time >= time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.mktime(time.strptime(target_time, "%Y-%m-%d %H:%M:%S")) - 600)):
+        if start_time <= current_time <= end_time:
             # 先循环查询课程
             while True:
+                current_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+                if current_time >= end_time:
+                    print("查询课程超时，程序停止。")
+                    break
+
                 try:
                     courses = get_available_courses()
                     print("课程列表：" + str(courses))
                     if courses:
                         break
                     else:
-                        print("查询课程列表为空，继续查询...")
+                        print("查询课程列表为空，等待3秒后继续查询...")
                         time.sleep(3)
                 except Exception as e:
                     print(f"查询课程列表出现异常: {e}")
                     time.sleep(2)
 
             # 再循环预订课程
-            while loop_count < 100:
+            loop_count = 0
+            while loop_count < 1000:
+                current_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+                if current_time >= end_time:
+                    print("预订课程超时，程序停止。")
+                    break
+
                 try:
                     for course in courses:
                         if course["bmrs"] < course["xzrs"]:
@@ -185,8 +196,6 @@ def main():
 
         else:
             time.sleep(1)
-
-    print("时间不在设定范围内，查询和预订循环结束")
 
 if __name__ == "__main__":
     main()
